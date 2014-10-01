@@ -68,4 +68,41 @@ eventlog.run
 
 ## Input plugin for LogStash
 
-As interesting as it is to be able to tail the XML log as if it were a typical flat file log, the real goal of the project is to create a LogStash input plugin that preserves the richness of the XML detail within the LogStash filter/output framework.
+As interesting as it is to be able to tail the XML log as if it were a typical flat file log, the real goal of the project is to create a LogStash input plugin that preserves the richness of the XML detail within the LogStash filter/output framework.  The `versalex` LogStash input plugin extends the `VersaLex` module into the LogStash environment.
+
+Note that both `logstash/inputs/versalex.rb` and `versalex.rb` must be on the plugin classpath, e.g.:
+
+```
+logstash -e 'input { versalex {} } output { stdout {} }' --pluginpath .
+```
+
+### Synopsis
+
+```
+input {
+  versalex {
+    service => ... # string (optional), default "cleo-harmony"
+    logfile => ... # path (optional), default derived from "service =>"
+    interval => ... # number (optional), default 2
+    buffer_size => ... # number (optional), default 1048576 (1MB)
+    rewind => ... # boolean (optional), default false
+  }
+}
+```
+
+### Details
+
+#### service
+If a logfile is not identified explicitly, it will be located from the service name.  The service must be registered as an upstart service with an `/etc/init/service.conf` file containing an `env CLEOHOME=path` directive, which is used to locate the XML log file.  The default service name is `cleo-harmony`.
+
+#### logfile
+Identifies the logfile to parse for events.  If the file does not exist, input will wait until it appears.  The input processes events from the logfile, monitoring and waiting for ongoing updates to be posted to the end of the file.  Note that the monitoring continues at the top of the file if the log file is rotated.  By default, the logfile is determined from the service name.
+
+#### interval
+The number of seconds to sleep when reaching the end of the logfile, in seconds.  2 seconds by default.
+
+#### buffer_size
+The size in bytes of the logfile read buffer.  Defaults to 1MB.
+
+#### rewind
+If `true`, starts reporting events from the start of the existing log file.  By default, the input spools to the end of the file and does not start emitting events until it reaches the end of the file for the first time.  Because of the way the logfile is structured, the file must be processed silently to parse the existing events, so a delay of a few seconds for a large logfile is expected.
