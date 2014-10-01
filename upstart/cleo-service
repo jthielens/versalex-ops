@@ -1,0 +1,153 @@
+#!/bin/sh
+# usage: sudo cleo-service install service [path]
+#        sudo cleo-service remove  service
+#
+# The script creates an upstart configuration in /etc/init/$servicename
+# and links the $servicename scripts in /etc/init.d, which typically
+# requires sudo.
+#
+# On install, if the installation [path] is not explicitly supplied, the
+# script looks for the service installation in some "usual suspects" 
+# locations.  If the service can not be found, you must explicitly supply
+# the installation path on install.
+
+# 
+# Make sure the command is install or remove
+#
+if ! [ "$1" = "install" -o "$1" = "remove" ]; then
+  echo "usage: $0 (install|remove) cleo-service [/path/where/installed]" 2>&1
+  exit 1
+fi
+op=$1
+
+# 
+# Validate the service name and set up service-dependent variables
+#
+if [ "$2" = "report" ]; then
+  servicename=cleo-report
+  servicedisplay="Cleo Report Server"
+  installdefault=JReport/CleoServer
+  proofofinstall=bin/CleoJRServerd 
+  exec='$CLEOHOME/bin/NJRServer.sh > $CLEOHOME/logs/CleoJRServerd.log 2>&1'
+  stop='$CLEOHOME/bin/CmdSender.sh localshutdown'
+  preloop='PORT=`grep ^httpserver.port= $CLEOHOME/bin/server.properties | cut -d= -f2`'
+  startloop='while ! netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+elif [ "$2" = "harmony" ]; then
+  servicename=cleo-harmony
+  servicedisplay="Cleo Harmony"
+  installdefault=Harmony
+  proofofinstall=Harmonyd
+  exec='$CLEOHOME/Harmonyc -s service'
+  stop='$CLEOHOME/Harmonyc -s service,stop'
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+elif [ "$2" = "vltrader" ]; then
+  servicename=cleo-vltrader
+  servicedisplay="Cleo VLTrader"
+  installdefault=VLTrader
+  servicedisplay="Cleo VLTrader"
+  installdefault=VLTrader
+  proofofinstall=VLTraderd
+  exec='$CLEOHOME/VLTraderc -s service'
+  stop='$CLEOHOME/VLTraderc -s service,stop'
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+elif [ "$2" = "vlproxy" ]; then
+  servicename=cleo-vlproxy
+  servicedisplay="Cleo Proxy"
+  installdefault=VLProxy
+  proofofinstall=VLProxyd
+  exec='$CLEOHOME/VLProxyc -s service'
+  stop='$CLEOHOME/VLProxyc -s service,stop'
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+else
+  echo "error: service name must be report, harmony, vltrader, or vlproxy: $2" 2>&1
+  exit 1
+fi
+
+#
+# Find or set CLEOHOME for op=install
+#
+if [ "$op" = "install" ]; then
+  if [ "$3" ]; then
+    CLEOHOME=$3
+    if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
+      CLEOHOME=$3/$installdefault
+      if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
+        echo "error: $servicedisplay not found in $3" 1>&2
+        exit 1
+      fi
+    fi
+  else
+    CLEOHOME=.
+    if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
+      CLEOHOME=./$installdefault
+      if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
+        CLEOHOME=$HOME/$installdefault
+        if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
+          echo "error: path to $servicedisplay installation required" 1>&2
+          exit 1
+        fi
+      fi
+    fi
+  fi
+  CLEOHOME=$(cd $CLEOHOME && pwd -P)
+fi
+
+# If that worked, set up the $servicename upstart service.
+
+if [ "$op" = "install" ]; then
+  # if cat - << SHELL
+  if ! tee /etc/init/$servicename.conf > /dev/null << SHELL
+# $servicedisplay
+
+description     "$servicedisplay"
+author          "John Thielens <jthielens at cleo.com>"
+
+env CLEOHOME=$CLEOHOME
+
+start on runlevel [2345]
+stop on starting rc RUNLEVEL=[016]
+
+setuid `stat -c '%U' $CLEOHOME/$proofofinstall`
+setgid `stat -c '%G' $CLEOHOME/$proofofinstall`
+exec $exec
+
+post-start script
+  PID=\`initctl status $servicename | cut -d ' ' -f 4\`
+  $preloop
+  $startloop
+end script
+
+pre-stop script
+  PID=\`initctl status $servicename | cut -d ' ' -f 4\`
+  $stop
+  $preloop
+  $stoploop
+end script
+SHELL
+  then
+    echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
+  else
+    ln -s /lib/init/upstart-job /etc/init.d/$servicename
+    initctl reload-configuration
+  fi
+else
+  # op=remove
+  if [ -e /etc/init/$servicename.conf ]; then
+    if [ -w /etc/init ]; then
+      initctl stop $servicename > /dev/null 2>&1
+      rm /etc/init/$servicename.conf
+      rm /etc/init.d/$servicename
+      initctl reload-configuration
+    else
+      echo "error: cannot remove $servicename: perhaps you forgot to sudo?" 1>&2
+      exit 1
+    fi
+  else
+    echo "error: $servicename is not registered"
+    exit 1
+  fi
+fi
