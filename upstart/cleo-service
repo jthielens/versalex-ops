@@ -7,11 +7,11 @@
 # requires sudo.
 #
 # On install, if the installation [path] is not explicitly supplied, the
-# script looks for the service installation in some "usual suspects" 
+# script looks for the service installation in some "usual suspects"
 # locations.  If the service can not be found, you must explicitly supply
 # the installation path on install.
 
-# 
+#
 # Make sure the command is install or remove
 #
 if ! [ "$1" = "install" -o "$1" = "remove" ]; then
@@ -20,14 +20,14 @@ if ! [ "$1" = "install" -o "$1" = "remove" ]; then
 fi
 op=$1
 
-# 
+#
 # Validate the service name and set up service-dependent variables
 #
 if [ "$2" = "report" ]; then
   servicename=cleo-report
   servicedisplay="Cleo Report Server"
   installdefault=JReport/CleoServer
-  proofofinstall=bin/CleoJRServerd 
+  proofofinstall=bin/CleoJRServerd
   exec='$CLEOHOME/bin/NJRServer.sh > $CLEOHOME/logs/CleoJRServerd.log 2>&1'
   stop='$CLEOHOME/bin/CmdSender.sh localshutdown'
   preloop='PORT=`grep ^httpserver.port= $CLEOHOME/bin/server.properties | cut -d= -f2`'
@@ -44,8 +44,6 @@ elif [ "$2" = "harmony" ]; then
   stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
 elif [ "$2" = "vltrader" ]; then
   servicename=cleo-vltrader
-  servicedisplay="Cleo VLTrader"
-  installdefault=VLTrader
   servicedisplay="Cleo VLTrader"
   installdefault=VLTrader
   proofofinstall=VLTraderd
