@@ -123,6 +123,8 @@ module VersaLex
     attr_reader   :id
     attr_reader   :attributes
 
+    COLOR = {"black"=>0, "red"=>1, "green"=>2, "yellow"=>3, "blue"=>4, "magenta"=>5, "cyan"=>6, "white"=>7}
+
     def initialize(string)
       event = REXML::Document.new string
       case event.elements[1].name
@@ -203,6 +205,18 @@ module VersaLex
     #--------------------------------------------------------------------------#
     def inspect
       "#{@id}/#{@time.iso8601} #{message}"
+    end
+
+    #--------------------------------------------------------------------------#
+    # Approximates the VersaLex UI, adding id and time to message, with color. #
+    #--------------------------------------------------------------------------#
+    def inspect_colorfully
+      color = COLOR[@attributes['color']]
+      if color
+        "\e[#{color+30}m#{@id}/#{@time.iso8601} #{message}\e[0m"
+      else
+        "#{@id}/#{@time.iso8601} #{message}"
+      end
     end
   end
 
@@ -346,8 +360,8 @@ if __FILE__ == $0
   # Setup and run the EventLog and wait for Interrupt (^C) if :follow.         #
   #----------------------------------------------------------------------------#
   eventlog = VersaLex::EventLog.new options[:file], :follow=>options[:follow]
-  laster   = Laster.new(eventlog, options[:last])    {|e| puts e.inspect} if options[:last]
-  dumper   = Dumper.new(eventlog, options[:skip]||0) {|e| puts e.inspect}
+  laster   = Laster.new(eventlog, options[:last])    {|e| puts e.inspect_colorfully} if options[:last]
+  dumper   = Dumper.new(eventlog, options[:skip]||0) {|e| puts e.inspect_colorfully}
   begin
     eventlog.run
   rescue Exception => e
