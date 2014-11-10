@@ -123,7 +123,7 @@ module VersaLex
     attr_reader   :id
     attr_reader   :attributes
 
-    COLOR = {"black"=>0, "red"=>1, "green"=>2, "orange"=>3, "blue"=>4, "magenta"=>5, "cyan"=>6, "white"=>7}
+    COLOR = {"black"=>30, "red"=>31, "green"=>32, "orange"=>"38;5;166", "blue"=>34, "magenta"=>35, "cyan"=>36, "white"=>37}
 
     def initialize(string)
       event = REXML::Document.new string
@@ -213,7 +213,7 @@ module VersaLex
     def inspect_colorfully
       color = COLOR[@attributes['color']] if @attributes
       if color
-        "\e[#{color+30}m#{@id}/#{@time.iso8601} #{message}\e[0m"
+        "\e[#{color}m#{@id}/#{@time.iso8601} #{message}\e[0m"
       else
         "#{@id}/#{@time.iso8601} #{message}"
       end
