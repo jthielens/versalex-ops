@@ -213,7 +213,7 @@ module VersaLex
     #--------------------------------------------------------------------------#
     def inspect_colorfully
       color = COLOR[@attributes['color']] if @attributes
-      color = COLOR["blue"] if @type=='Transfer'
+      color = COLOR["blue"] if @type=='Transfer' || @type=='File'
       if color
         "\e[#{color}m#{@id}/#{@time.iso8601} #{message}\e[0m"
       else
