@@ -138,12 +138,14 @@ module VersaLex
           key = tn[0][0]
           @@threads[key[2..-1]] = attrs[key];
         end
-        # <Run date="%Y/%m/%d %H:%M:%S"...>
+        # <Run date="%Y/%m/%d %H:%M:%S" [ms="nnn"]...>
         # the trick here is to split into digit strings, map to int, splat into args to Time.local
+        # note that the ms is optional (<Other>IncludeMillisecondInSystemLogFile=true</Other> in Options.xml)
         @time = Time.local *attrs['date'].split(/\D/).map!{|i|i.to_i}
+        @time += attrs['ms'].to_i/1000.0;
       when 'Event'
         # <Event>
-        #   <Mark date="%Y/%m/%d %H:%M:%S" TN="task#" CN="command#" EN="event#"/>
+        #   <Mark date="%Y/%m/%d %H:%M:%S" [ms="nnn"] TN="task#" CN="command#" EN="event#"/>
         #   one of (this list is from the JavaDocs, but seems inaccurate):
         #   <Thread   action [type]   />
         #   <Command  text type [line]/>
@@ -169,6 +171,7 @@ module VersaLex
             @command    = element.attributes['CN']
             @id         = element.attributes['EN']
             @thread     = @@threads[@threadid]
+            @time      += element.attributes['ms'].to_i/1000.0;
           else
             @type       = element.name
             @attributes = {}
@@ -215,9 +218,9 @@ module VersaLex
       color = COLOR[@attributes['color']] if @attributes
       color = COLOR["blue"] if @type=='Transfer' || @type=='File'
       if color
-        "\e[#{color}m#{@id}/#{@time.iso8601} #{message}\e[0m"
+        "\e[#{color}m#{@id}/#{@time.xmlschema(3)} #{message}\e[0m"
       else
-        "#{@id}/#{@time.iso8601} #{message}"
+        "#{@id}/#{@time.xmlschema(3)} #{message}"
       end
     end
   end
