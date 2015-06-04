@@ -201,7 +201,9 @@ module VersaLex
         msg = (msg && msg.length>0?msg+': ':'')+@attributes['text'] if @attributes['text']
       end
       msg = ': '+msg if msg && msg.length>0
-      "#{@thread}[#{@command||@threadid}] #{@type}#{msg}"
+      id = @threadid
+      id += '.'+@command if @command
+      "#{@thread}[#{id}] #{@type}#{msg}"
     end
 
     #--------------------------------------------------------------------------#
