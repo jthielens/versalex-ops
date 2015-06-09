@@ -1,5 +1,5 @@
 #!/bin/sh
-# usage: sudo cleo-service install service [path]
+# usage: sudo cleo-service install (service|path) [alias]
 #        sudo cleo-service remove  service
 #
 # The script creates an upstart configuration in /etc/init/$servicename
@@ -15,15 +15,19 @@
 # Make sure the command is install or remove
 #
 if ! [ "$1" = "install" -o "$1" = "remove" ]; then
-  echo "usage: $0 (install|remove) cleo-service [/path/where/installed]" 2>&1
+  echo "usage: $0 install (cleo-service|/path/where/installed) [alias]" 2>&1
+  echo "       $0 remove   cleo-service" 2>&1
   exit 1
 fi
 op=$1
+CLEOHOME=.
 
 #
 # Validate the service name and set up service-dependent variables
 #
-if [ "$2" = "report" ]; then
+if [ $op = "remove" ]; then
+  servicename=$2
+elif [ "$2" = "cleo-report" -o -e "$2/bin/CleoJRServerd" ]; then
   servicename=cleo-report
   servicedisplay="Cleo Report Server"
   installdefault=JReport/CleoServer
@@ -33,7 +37,8 @@ if [ "$2" = "report" ]; then
   preloop='PORT=`grep ^httpserver.port= $CLEOHOME/bin/server.properties | cut -d= -f2`'
   startloop='while ! netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
   stoploop='while netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-elif [ "$2" = "harmony" ]; then
+  if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
+elif [ "$2" = "cleo-harmony" -o -e "$2/Harmonyd" ]; then
   servicename=cleo-harmony
   servicedisplay="Cleo Harmony"
   installdefault=Harmony
@@ -42,7 +47,8 @@ elif [ "$2" = "harmony" ]; then
   stop='$CLEOHOME/Harmonyc -s service,stop'
   startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
   stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-elif [ "$2" = "vltrader" ]; then
+  if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
+elif [ "$2" = "cleo-vltrader" -o -e "$2/VLTraderd" ]; then
   servicename=cleo-vltrader
   servicedisplay="Cleo VLTrader"
   installdefault=VLTrader
@@ -51,7 +57,8 @@ elif [ "$2" = "vltrader" ]; then
   stop='$CLEOHOME/VLTraderc -s service,stop'
   startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
   stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-elif [ "$2" = "vlproxy" ]; then
+  if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
+elif [ "$2" = "cleo-vlproxy" -o -e "$2/VLProxyd" ]; then
   servicename=cleo-vlproxy
   servicedisplay="Cleo Proxy"
   installdefault=VLProxy
@@ -60,8 +67,13 @@ elif [ "$2" = "vlproxy" ]; then
   stop='$CLEOHOME/VLProxyc -s service,stop'
   startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
   stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 else
-  echo "error: service name must be report, harmony, vltrader, or vlproxy: $2" 2>&1
+  if [ -e $2 -o ${2#*/} != $2 ]; then
+    echo "error: no Cleo service found in $2" 2>&1
+  else
+    echo "error: service name must be cleo-report, cleo-harmony, cleo-vltrader, or cleo-vlproxy: $2" 2>&1
+  fi
   exit 1
 fi
 
@@ -70,16 +82,9 @@ fi
 #
 if [ "$op" = "install" ]; then
   if [ "$3" ]; then
-    CLEOHOME=$3
-    if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
-      CLEOHOME=$3/$installdefault
-      if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
-        echo "error: $servicedisplay not found in $3" 1>&2
-        exit 1
-      fi
-    fi
-  else
-    CLEOHOME=.
+    servicename=$3
+  fi
+  if [ $CLEOHOME = . ]; then
     if ! [ -e "$CLEOHOME/$proofofinstall" ]; then
       CLEOHOME=./$installdefault
       if ! [ -e "$CLEOHOME/$proofofinstall" ]; then

@@ -5,7 +5,7 @@ Use this script to install Linux upstart services for Cleo VersaLex components.
 ## Usage
 
 ```
-sudo cleo-service install service [path]
+sudo cleo-service install (service|path) [alias]
 sudo cleo-service remove service
 ```
 
@@ -17,10 +17,14 @@ The following services are supported:
 
 | Install | Start |
 |---------|-------|
-| `cleo-service install harmony`  | `initctl start cleo-harmony`  |
-| `cleo-service install report`   | `initctl start cleo-report`   |
-| `cleo-service install vltrader` | `initctl start cleo-vltrader` |
-| `cleo-service install vlproxy`  | `initctl start cleo-vlproxy`  |
+| `cleo-service install cleo-harmony`  | `initctl start cleo-harmony`  |
+| `cleo-service install cleo-report`   | `initctl start cleo-report`   |
+| `cleo-service install cleo-vltrader` | `initctl start cleo-vltrader` |
+| `cleo-service install cleo-vlproxy`  | `initctl start cleo-vlproxy`  |
+
+Note that you may provide either the service name (e.g. `cleo-harmony`), in which case the script will guess a few usual places for the installation directory, or the installation directory (e.g. `Harmony` or `$HOME/Harmony`), in which case the script will examine the contents of the directory to determine the service name.
+
+You may also provide an optional alias to override the service name.  This could be used, for example, to run multiple services of the same type on a single machine.
 
 ## Permissions
 
