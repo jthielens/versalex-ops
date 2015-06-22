@@ -3,9 +3,9 @@ versalex-ops
 
 This is a collection of DevOps style tools for Cleo VersaLex products.
 
-## upstart
+## service
 
-A Linux shell script for managing Cleo components in an upstart-based init toolchain.
+A Linux shell script for managing Cleo components as a service in an init toolchain.  Both `systemd` and `upstart` are supported.
 
 ## logstash
 
