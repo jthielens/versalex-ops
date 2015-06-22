@@ -21,6 +21,7 @@ if ! [ "$1" = "install" -o "$1" = "remove" ]; then
 fi
 op=$1
 CLEOHOME=.
+init=`ps -p1 | grep systemd > /dev/null && echo systemd || echo upstart`
 
 #
 # Validate the service name and set up service-dependent variables
@@ -35,8 +36,8 @@ elif [ "$2" = "cleo-report" -o -e "$2/bin/CleoJRServerd" ]; then
   exec='$CLEOHOME/bin/NJRServer.sh > $CLEOHOME/logs/CleoJRServerd.log 2>&1'
   stop='$CLEOHOME/bin/CmdSender.sh localshutdown'
   preloop='PORT=`grep ^httpserver.port= $CLEOHOME/bin/server.properties | cut -d= -f2`'
-  startloop='while ! netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-  stoploop='while netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  startloop='while ! netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while netstat -tln4 | grep ":$PORT " > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
   if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 elif [ "$2" = "cleo-harmony" -o -e "$2/Harmonyd" ]; then
   servicename=cleo-harmony
@@ -45,8 +46,9 @@ elif [ "$2" = "cleo-harmony" -o -e "$2/Harmonyd" ]; then
   proofofinstall=Harmonyd
   exec='$CLEOHOME/Harmonyc -s service'
   stop='$CLEOHOME/Harmonyc -s service,stop'
-  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  preloop=:
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
   if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 elif [ "$2" = "cleo-vltrader" -o -e "$2/VLTraderd" ]; then
   servicename=cleo-vltrader
@@ -55,8 +57,9 @@ elif [ "$2" = "cleo-vltrader" -o -e "$2/VLTraderd" ]; then
   proofofinstall=VLTraderd
   exec='$CLEOHOME/VLTraderc -s service'
   stop='$CLEOHOME/VLTraderc -s service,stop'
-  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  preloop=:
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
   if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 elif [ "$2" = "cleo-vlproxy" -o -e "$2/VLProxyd" ]; then
   servicename=cleo-vlproxy
@@ -65,8 +68,9 @@ elif [ "$2" = "cleo-vlproxy" -o -e "$2/VLProxyd" ]; then
   proofofinstall=VLProxyd
   exec='$CLEOHOME/VLProxyc -s service'
   stop='$CLEOHOME/VLProxyc -s service,stop'
-  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
-  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $PID > /dev/null 2>&1; do sleep 1; done'
+  preloop=:
+  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
+  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
   if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 else
   if [ -e $2 -o ${2#*/} != $2 ]; then
@@ -99,11 +103,54 @@ if [ "$op" = "install" ]; then
   CLEOHOME=$(cd $CLEOHOME && pwd -P)
 fi
 
-# If that worked, set up the $servicename upstart service.
+# If that worked, set up the $servicename service in systemd or upstart as appropriate.
 
-if [ "$op" = "install" ]; then
-  # if cat - << SHELL
-  if ! tee /etc/init/$servicename.conf > /dev/null << SHELL
+if [ "$init" = "systemd" ]; then
+  # shiny new systemd init system
+  if [ "$op" = "install" ]; then
+    # if cat - << SHELL
+    if ! tee /lib/systemd/system/$servicename.service > /dev/null << SHELL
+[Unit]
+Description=$servicedisplay
+
+[Service]
+Type=simple
+User=`stat -c '%U' $CLEOHOME/$proofofinstall`
+Group=`stat -c '%G' $CLEOHOME/$proofofinstall`
+Environment=CLEOHOME=$CLEOHOME
+ExecStart=${exec//\$CLEOHOME/$CLEOHOME}
+ExecStartPost=/bin/sh -ec '/bin/echo \$MAINPID>$CLEOHOME/cleo.pid;${preloop//\$CLEOHOME/CLEOHOME}; ${startloop//\$CLEOHOME/$CLEOHOME}'
+ExecStop=/bin/sh -ec '${stop//\$CLEOHOME/$CLEOHOME};${preloop//\$CLEOHOME/$CLEOHOME};${stoploop//\$CLEOHOME/$CLEOHOME};/bin/rm $CLEOHOME/cleo.pid'
+
+[Install]
+WantedBy=multi-user.target
+SHELL
+    then
+      echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
+    else
+      systemctl enable /lib/systemd/system/$servicename.service
+    fi
+  else
+    # op=remove
+    if [ -e /lib/systemd/system/$servicename.service ]; then
+      # if systemctl disable $servicename > /dev/null 2>&1; then
+      if systemctl disable $servicename; then
+        systemctl stop $servicename > /dev/null 2>&1
+        rm /lib/systemd/system/$servicename.service
+      else
+        echo "error: cannot remove $servicename: perhaps you forgot to sudo?" 1>&2
+        exit 1
+      fi
+    else
+      echo "error: $servicename is not registered"
+      exit 1
+    fi
+  fi
+else
+  # older upstart init system
+  if [ "$op" = "install" ]; then
+    # if cat - << SHELL
+    if ! tee /etc/init/$servicename.conf > /dev/null << SHELL
 # $servicedisplay
 
 description     "$servicedisplay"
@@ -119,38 +166,39 @@ setgid `stat -c '%G' $CLEOHOME/$proofofinstall`
 exec $exec
 
 post-start script
-  PID=\`initctl status $servicename | cut -d ' ' -f 4\`
+  MAINPID=\`initctl status $servicename | cut -d ' ' -f 4\`
   $preloop
   $startloop
 end script
 
 pre-stop script
-  PID=\`initctl status $servicename | cut -d ' ' -f 4\`
+  MAINPID=\`initctl status $servicename | cut -d ' ' -f 4\`
   $stop
   $preloop
   $stoploop
 end script
 SHELL
-  then
-    echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
-  else
-    ln -s /lib/init/upstart-job /etc/init.d/$servicename
-    initctl reload-configuration
-  fi
-else
-  # op=remove
-  if [ -e /etc/init/$servicename.conf ]; then
-    if [ -w /etc/init ]; then
-      initctl stop $servicename > /dev/null 2>&1
-      rm /etc/init/$servicename.conf
-      rm /etc/init.d/$servicename
-      initctl reload-configuration
+    then
+      echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
     else
-      echo "error: cannot remove $servicename: perhaps you forgot to sudo?" 1>&2
-      exit 1
+      ln -s /lib/init/upstart-job /etc/init.d/$servicename
+      initctl reload-configuration
     fi
   else
-    echo "error: $servicename is not registered"
-    exit 1
+    # op=remove
+    if [ -e /etc/init/$servicename.conf ]; then
+      if [ -w /etc/init ]; then
+        initctl stop $servicename > /dev/null 2>&1
+        rm /etc/init/$servicename.conf
+        rm /etc/init.d/$servicename
+        initctl reload-configuration
+      else
+        echo "error: cannot remove $servicename: perhaps you forgot to sudo?" 1>&2
+        exit 1
+      fi
+    else
+      echo "error: $servicename is not registered"
+      exit 1
+    fi
   fi
 fi
