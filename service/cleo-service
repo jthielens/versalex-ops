@@ -11,17 +11,70 @@
 # locations.  If the service can not be found, you must explicitly supply
 # the installation path on install.
 
+# usage:   etag $url
+# returns: the ETag for $url, or error if the connection fails
+etag () {
+    local url
+    url=$1
+    if headers=`wget -S --spider -nv $url 2>&1`; then
+        echo $headers | sed -n 's/.*ETag: *"\(.*\)".*/\1/p'
+    else
+        echo error
+    fi
+}
+
+# usage:   download $url $target
+# returns: the downloaded file name
+download() {
+    local url target tag tagfile
+    url=$1
+    target=$2
+    tag=$(etag $url)
+    tagfile=$target.etag
+    if [ "$tag" = "error" ]; then
+        echo "connection error: reusing cached $target" 1>&2
+        echo $target; return
+    elif [ -f $tagfile -a "$tag" ]; then
+        if [ "$tag" = $(cat $tagfile 2>/dev/null) ] ; then
+            echo "cache etag matches: reusing cached $target" 1>&2
+            echo $target
+            return
+        fi
+    fi
+    # download the target
+    echo "downloading $target from $url (tag=$tag file=$(cat $tagfile 2>/dev/null))" 1>&2
+    wget -nv -q -O $target $url
+    if [ "$tag" ]; then
+        echo $tag > $tagfile
+    fi
+    echo $target
+}
+
+#
+# Check for update
+#
+if [ "$1" = "update" ]; then
+  download 'https://raw.githubusercontent.com/jthielens/versalex-ops/master/service/cleo-service' $0 > /dev/null
+  exit 0
+fi
+
 #
 # Make sure the command is install or remove
 #
 if ! [ "$1" = "install" -o "$1" = "remove" ]; then
   echo "usage: $0 install (cleo-service|/path/where/installed) [alias]" 2>&1
   echo "       $0 remove   cleo-service" 2>&1
+  echo "       $0 update" 2>&1
   exit 1
 fi
 op=$1
 CLEOHOME=.
 init=`ps -p1 | grep systemd > /dev/null && echo systemd || echo upstart`
+if [ $init = upstart ]; then
+  if [ $(printf "1.4\n$(initctl --version | sed -n 's/.*upstart \([0-9\.]*\).*/\1/p')" | sort -V | head -1) != "1.4" ]; then
+    oldupstart=true
+  fi
+fi
 
 #
 # Validate the service name and set up service-dependent variables
@@ -149,6 +202,12 @@ SHELL
 else
   # older upstart init system
   if [ "$op" = "install" ]; then
+    runuid=`stat -c '%U' $CLEOHOME/$proofofinstall`
+    rungid=`stat -c '%G' $CLEOHOME/$proofofinstall`
+    if [ $oldupstart ]; then
+      exec=su -c \'$exec\' $runuid
+      suppress='#'
+    fi
     # if cat - << SHELL
     if ! tee /etc/init/$servicename.conf > /dev/null << SHELL
 # $servicedisplay
@@ -161,8 +220,8 @@ env CLEOHOME=$CLEOHOME
 start on runlevel [2345]
 stop on starting rc RUNLEVEL=[016]
 
-setuid `stat -c '%U' $CLEOHOME/$proofofinstall`
-setgid `stat -c '%G' $CLEOHOME/$proofofinstall`
+${suppress}setuid $runuid
+${suppress}setgid $rungid
 exec $exec
 
 post-start script
