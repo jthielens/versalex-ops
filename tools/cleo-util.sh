@@ -20,14 +20,31 @@ githubdownload () {
     echo $artifact
 }
 
+# usage:   cleorelease $product
+# returns: the current release of $product
+cleorelease () {
+    local product
+    product=$1
+    if [ "$product" = "vltrader" ]; then
+        echo 5.2
+    elif [ "$product" = "harmony" ]; then
+        echo 5.2
+    elif [ "$product" = "unify" ]; then
+        echo 2.3
+    else
+        echo ''
+    fi
+}
+
 # usage:   cleourl "product" ["release"]
 # returns: the download URL for Cleo product "product", optionally including "release"
+# note:    supports Linux/Ubuntu for Unify
 cleourl () {
     local product release os
     product=$1
     release=$2
     os="Linux"
-    if [ "$release" ]; then release=_$release; fi
+    if [ "$release" = $(cleorelease $product) -o -z "$release" ]; then release=''; else release=_$release; fi
     # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
     jre=1.7
     if [ "$product" = "unify" ]; then os="Ubuntu"; fi
@@ -102,7 +119,7 @@ cleodownload () {
     echo $(download $(cleourl $product $release) "$product$release.bin")
 }
 
-# usage:   patchdownload $release $patch
+# usage:   patchdownload $product $release $patch
 # returns: the install file name
 patchdownload () {
     local product release patch
