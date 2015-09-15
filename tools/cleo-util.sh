@@ -1,0 +1,247 @@
+#!/bin/sh
+# usage:   githuburl "jthielens/versalex-ops" "service/cleo-service"
+# returns: the github URL for file in repo
+githuburl () {
+    local repo path
+    repo=$1
+    path=$2
+    echo "https://raw.githubusercontent.com/$repo/master/$path"
+}
+
+# usage:   githubdownload "github-user/repo" "path/artifact"
+# returns: /usr/local/bin/$artifact
+githubdownload () {
+    local repo path artifact
+    repo=$1
+    path=$2
+    artifact=${2##*/}
+    sudo wget -nv -q -O "/usr/local/bin/$artifact" $(githuburl "$repo" "$path")
+    sudo chmod a+x "/usr/local/bin/$artifact"
+    echo $artifact
+}
+
+# usage:   cleourl "product" ["release"]
+# returns: the download URL for Cleo product "product", optionally including "release"
+cleourl () {
+    local product release os
+    product=$1
+    release=$2
+    os="Linux"
+    if [ "$release" ]; then release=_$release; fi
+    # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
+    jre=1.7
+    if [ "$product" = "unify" ]; then os="Ubuntu"; fi
+    echo "http://www.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.bin"
+}
+
+# usage:   patchurl "product" "release" "patch"
+# returns: the download URL for Cleo VersaLex patch "patch" for "release"
+patchurl () {
+    local product release patch
+    product=$1
+    release=$2
+    patch=$3
+    echo "http://www.cleo.com/Web_Install/PatchBase_$release/$product/$patch/$patch.zip"
+}
+
+# usage:   mysqlurl "version"
+# returns: the download URL for MySQL driver "version"
+mysqlurl () {
+    local version
+    version=$1
+    echo "http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-$version.tar.gz"
+}
+
+# usage:   etag $url
+# returns: the ETag for $url, or error if the connection fails
+etag () {
+    local url
+    url=$1
+    if headers=`wget -S --spider -nv $url 2>&1`; then
+        echo $headers | sed -n 's/.*ETag: *"\(.*\)".*/\1/p'
+    else
+        echo error
+    fi
+}
+
+# usage:   download $url $installer
+# returns: the install file name
+download () {
+    local url installer repo tag tagfile
+    url=$1
+    installer=$2
+    repo="/vagrant/cache"
+    if [ ! -e $repo ] ; then mkdir $repo; fi
+    tag=$(etag $url)
+    tagfile="$repo/$installer.etag"
+    if [ "$tag" = "error" ]; then
+        echo "connection error: reusing cached $repo/$installer" 1>&2
+        echo $repo/$installer; return
+    elif [ -f $tagfile -a "$tag" ]; then
+        if [ "$tag" = $(cat $tagfile 2>/dev/null) ] ; then
+            echo "cache etag matches: reusing cached $repo/$installer" 1>&2
+            echo $repo/$installer
+            return
+        fi
+    fi
+    # download the installer
+    echo "downloading $repo/$installer from $url (tag=$tag file=$(cat $tagfile 2>/dev/null))" 1>&2
+    wget -nv -O $repo/$installer $url
+    if [ "$tag" ]; then
+        echo $tag > $tagfile
+    fi
+    echo $repo/$installer
+}
+
+# usage:   cleodownload $product [$release]
+# returns: the install file name
+cleodownload () {
+    local product release
+    product=$1
+    release=$2
+    echo $(download $(cleourl $product $release) "$product$release.bin")
+}
+
+# usage:   patchdownload $release $patch
+# returns: the install file name
+patchdownload () {
+    local product release patch
+    product=$1
+    release=$2
+    patch=$3
+    echo $(download $(patchurl $product $release $patch) "$product.$release.$patch.zip")
+}
+
+# usage:   mysqldownload $version
+# returns: the downloaded install file name
+mysqldownload () {
+    local version
+    version=$1
+    echo $(download $(mysqlurl $version) "mysql-connector.tar.gz")
+}
+
+# usage:   issuerfiles [issuerdir]
+# returns: nothing, but creates the crt, key, and cnf files if needed
+#          issuerdir defaults to $HOME
+issuerfiles() {
+    local issuerdir
+    issuerdir=${1:-$HOME}
+    if ! [ -e $issuerdir/vagrant.crt ]; then
+        tee $issuerdir/vagrant.crt <<END >/dev/null
+-----BEGIN CERTIFICATE-----
+MIIDgTCCAmmgAwIBAgIJAIxWZLjTd3mLMA0GCSqGSIb3DQEBBQUAMFcxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIDAJJTDETMBEGA1UEBwwKTG92ZXMgUGFyazENMAsGA1UE
+CgwEQ2xlbzEXMBUGA1UEAwwOVmFncmFudCBJc3N1ZXIwHhcNMTQwMzE4MDAxOTI3
+WhcNMTYwMzE3MDAxOTI3WjBXMQswCQYDVQQGEwJVUzELMAkGA1UECAwCSUwxEzAR
+BgNVBAcMCkxvdmVzIFBhcmsxDTALBgNVBAoMBENsZW8xFzAVBgNVBAMMDlZhZ3Jh
+bnQgSXNzdWVyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5PnT/9w0
+StHoy0+DpuqLTmKb7WCAAKDnQjUSAhQCn0wAxJEv2PBVcf4WW1Gq/fJ4mAi0I8ul
+cAoU7p+WJMnrPTejGNCURjgoH3i+FVsAe3wRC3ENdFDdja8MPLUIaAypriAU/w5Y
+zdJiLr8WsIrX7PwGPGjkvUceT+pHvVAwiedpFGDyR6W/yilPkvqaddk72zKEkj8D
+U/GFW1Z1ctTV56VVCM6qSxNPKJY7nu5lD5JEIBw438gBrbVvcHxkqTPr//+vIGUK
+R13qWvBzZOYE00kzFDA2E5Pe7RHRaVF/rC+IOhM6BireFMycoqiaysJEH7Vkje8f
+4n6KL1eOtfZUSwIDAQABo1AwTjAdBgNVHQ4EFgQU2xxNZ0s5TcPRo03yT9Y7rENj
+eBUwHwYDVR0jBBgwFoAU2xxNZ0s5TcPRo03yT9Y7rENjeBUwDAYDVR0TBAUwAwEB
+/zANBgkqhkiG9w0BAQUFAAOCAQEAx9vrxSnOvrXfoP8g0kRo21PIfdFc3xeD+rb1
+ZJwccAqb8KyMgZgd8nIloLVOiV3jP1sQRrUosj2iPe2N51XJol9a38yzsuP8NHMa
+7GSkxg4OzE4R12YZRRtkzRlm2sB4AtmPgCwHYtQ3DetMyKvpRElhpsPlivIDnodO
+UHegL7G0VQxHeuCeeFb90oYifLaPgbY/6iTDo/dnVlQMAksjwqlXzDpDKic5dAFs
+tYtPGgNjjLSWOYAvERyZwHJWG+5t99HJj60wvNQhK8FRBKwbbTEyoR6/2HZLLHZO
+5nn62NFYt6zNefXnCgmZ/yq5KIzhk1trg7qQYvqktd9aqxzkKA==
+-----END CERTIFICATE-----
+END
+    fi
+    if ! [ -e $issuerdir/vagrant.key ]; then
+        tee $issuerdir/vagrant.key <<END >/dev/null
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDk+dP/3DRK0ejL
+T4Om6otOYpvtYIAAoOdCNRICFAKfTADEkS/Y8FVx/hZbUar98niYCLQjy6VwChTu
+n5Ykyes9N6MY0JRGOCgfeL4VWwB7fBELcQ10UN2Nrww8tQhoDKmuIBT/DljN0mIu
+vxawitfs/AY8aOS9Rx5P6ke9UDCJ52kUYPJHpb/KKU+S+pp12TvbMoSSPwNT8YVb
+VnVy1NXnpVUIzqpLE08oljue7mUPkkQgHDjfyAGttW9wfGSpM+v//68gZQpHXepa
+8HNk5gTTSTMUMDYTk97tEdFpUX+sL4g6EzoGKt4UzJyiqJrKwkQftWSN7x/ifoov
+V4619lRLAgMBAAECggEAJU+MOvnvz21K6K4pPq6jSn+I9vItiWyuojwxlgMatkhV
+K7KYwFnRIoULsY+qND0pZ2SrrdWGPK534LZCafY5Db2eJvH95z9JUm+DUcmFV5nM
+0Td3wMdYgrjOXqoFF6dQkt4JbdIxqEAq3YEnula1fplGjttswmbvSohbbj692gp7
+MOYsLixA0bKJiRRMARLNCa9feM5cswJJsBud8qx90S2UIEIzFcTuhcTIGhAH4MH9
+JQysudxuUhtGnNBfO+2idOvhBR6gwu+h+EFnDThYiFX1AKtV3pSMWgWFTX0D86nC
+N+V2FYxaH6/YBnZtXGvQlonMwHzGFB+R0HWrmzZT4QKBgQD/nDI6BO27H7t4xnkZ
+WsW/ZXUNvoCuhBkP67qJPHAQU64g6OXM0Ka1uMm2y+X9U9kfrYFgrSl8Cm6cmHoc
+0tSfAHKyG1rQM3E/B1ABjizQSu1BpK25qiAMZbo4/j3Yl1eswwiUvtVMf5jG8GeX
+Y3SuMWU2l4+T22RVO7PDFA+N0QKBgQDlUzuE4TaRbqI2gWF5sIABitmOUM+USBc/
+2TMdUyA5KAJLpTYxBboL+8QJJ7MjITN5qxBcrgA0aCWOi2r3ZzdIJHvlxEBVzNx3
+W4EzkVyzvLoS+1T5QveHGSUHsofP0WqFxbnucRuEA3nK8wpJ7wGFejrov15DTF3h
+0K03B/P7WwKBgQCH9mGREwYRPvPNbmUD45DEGgeFZAu2yHU8TrtOPGOvi5NX1gpG
+Q8Ypaz2Aijyv32Xiv7vN3M3wOOxVR5XMtyh52xcnPf20OWjHifA4o5OayAAjpqDx
+3Vhmv8WqgzIKf5YXQzbRSCDVLBnr1/yCPljWP1gDDeNFVrGr1LHt1kHfwQKBgQCn
+y7QEMYns9eeJPDfng4bWGhO/t097rxgb5sAo19b/G1A6q2MwkYElHY2+KSdBMBzr
+DIkHV2Xc8stwNoEJD6P6jH9/io6MeT5jszehVN5gwVnhY7c0P5TAbFyU+kO3gwKP
+aTL3zhkVCjoGjrjbih8x3FLYVJYTZgBXp4nmd1JFewKBgB6niKLD268YB7gX8Rhw
+l8mUDvqdfScfSg6DSC58SyXZkxhnQC7NQ9fp6YLcYbbE8gfTZnnK6NjCemcM6jO1
+84rbYEFVPTgEfW7OqHimkLpDIJIB3EE0ehsSsL8lJAkLvkfNh9W/FrVl+oaMnzbQ
+4LrOiyCNJlIRBkRgqciMLwzA
+-----END PRIVATE KEY-----
+END
+    fi
+    if ! [ -e $issuerdir/vagrantssl.cnf ]; then
+        tee $issuerdir/vagrantssl.cnf <<END >/dev/null
+#
+# OpenSSL example configuration file.
+# This is mostly being used for generation of certificate requests.
+#
+
+# This definition stops the following lines choking if HOME isn't
+# defined.
+HOME			= .
+RANDFILE		= $ENV::HOME/.rnd
+
+# Extra OBJECT IDENTIFIER info:
+#oid_file		= $ENV::HOME/.oid
+oid_section		= new_oids
+
+# To use this configuration file with the "-extfile" option of the
+# "openssl x509" utility, name here the section containing the
+# X.509v3 extensions to use:
+# extensions		= 
+# (Alternatively, use a configuration file that has only
+# X.509v3 extensions in its main [= default] section.)
+
+[ ssl_cert ]
+
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = critical,serverAuth
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+
+[ as2_sign ]
+
+keyUsage = critical,digitalSignature
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+
+[ as2_encrypt ]
+
+keyUsage = critical,keyEncipherment
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+END
+    fi
+}
+
+# usage:   issue subject key [issuerdir]
+# returns: nothing, but creates key.{key,req,crt,p8}
+#          issuerdir defaults to $HOME
+issue() {
+    local subject key issuerdir
+    subject=$1
+    key=$2
+    issuerdir=${3:-$HOME}
+    issuerfiles $issuerdir
+    openssl req -new -newkey rsa:2048 -nodes \
+        -subj "$subject" -keyout $key.key -out $key.req 2>/dev/null
+    openssl x509 -req -in $key.req -extfile $issuerdir/vagrantssl.cnf \
+        -days 365 -extensions ssl_cert \
+        -CA $issuerdir/vagrant.crt -CAkey $issuerdir/vagrant.key -set_serial \
+        0x`uuidgen|sed 's/-//g'` -out $key.crt 2>/dev/null
+    openssl pkcs8 -topk8 -in $key.key  -out $key.p8  -passout pass:cleo 2>/dev/null
+}
