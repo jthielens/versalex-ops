@@ -92,6 +92,18 @@ mysqlurl () {
     echo "http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-$version.tar.gz"
 }
 
+# usage:   speak short-message long-message
+# does:    echo a message to stderr depending on "quiet" variable
+speak () {
+    short=$1
+    long=$2
+    if [ -z "$quiet" ]; then
+        echo $long 1>&2
+    elif [ "$quiet" = short -a "$short" ]; then
+        echo $short 1>&2
+    fi
+}
+
 # usage:   download $url $target [$cache]
 # returns: the target file name in the $cache (default is /vagrant/cache)
 download () {
@@ -108,7 +120,8 @@ download () {
         tag=null
     fi
     # attempt to download the target using current etag, if any
-    echo "downloading $cache/$target from $url (current etag=$(cat $tagfile 2>/dev/null))" 1>&2
+    speak "checking $target..." \
+          "downloading $cache/$target from $url (current etag=$(cat $tagfile 2>/dev/null))"
     if wget -nv -S --header="If-None-Match: $tag" -O $cache/$target.tmp $url 2> $cache/$target.tmp.h; then
         tag=$(sed -n '0,/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $cache/$target.tmp.h)
         if [ "$tag" ]; then
@@ -116,14 +129,17 @@ download () {
         fi
         if [ -s $cache/$target.tmp ]; then
             mv -f $cache/$target.tmp $cache/$target
-            echo "successful download: $cache/$target (new etag=$tag)" 1>&2
+            speak "$target updated" \
+                  "successful download: $cache/$target (new etag=$tag)"
         else
-          echo "empty download: reusing cached $cache/$target" 1>&2
+          speak "empty download: $target not updated" \
+                "empty download: reusing cached $cache/$target"
         fi
     elif grep 'HTTP/1\.1 304' $cache/$target.tmp.h >/dev/null 2>&1; then
-        echo "file not modified: reusing cached $cache/$target" 1>&2
+        speak '' "file not modified: reusing cached $cache/$target"
     else
-        echo "connection error: reusing cached $cache/$target" 1>&2
+        speak "connection error: $target not updated" \
+              "connection error: reusing cached $cache/$target" 1>&2
     fi
     rm $cache/$target.tmp.h 2>/dev/null
     rm $cache/$target.tmp   2>/dev/null
