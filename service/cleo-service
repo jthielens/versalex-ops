@@ -181,7 +181,7 @@ SHELL
     then
       echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
     else
-      systemctl enable /lib/systemd/system/$servicename.service
+      systemctl enable $servicename.service
     fi
   else
     # op=remove
