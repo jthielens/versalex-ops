@@ -8,16 +8,39 @@ githuburl () {
     echo "https://raw.githubusercontent.com/$repo/master/$path"
 }
 
-# usage:   githubdownload "github-user/repo" "path/artifact"
+# usage:   githubdownload "github-user/repo" "path/artifact" [$cache]
 # returns: /usr/local/bin/$artifact
 githubdownload () {
-    local repo path artifact
+    local repo path artifact cache
     repo=$1
     path=$2
+    cache=${3:-"/usr/local/bin"}
     artifact=${2##*/}
-    sudo wget -nv -q -O "/usr/local/bin/$artifact" $(githuburl "$repo" "$path")
-    sudo chmod a+x "/usr/local/bin/$artifact"
+    download $(githuburl "$repo" "$path") $artifact $cache
+    sudo chmod a+x "$cache/$artifact"
     echo $artifact
+}
+
+# usage:   githubasseturl user/repo release asset
+# returns: the github asset download URL for the asset and release
+githubasseturl () {
+    local repo release asset
+    repo=$1
+    release=$2
+    asset=$3
+    echo "https://github.com/$repo/releases/download/$release/$asset"
+}
+
+# usage:   githubassetdownload user/repo release asset [cache]
+# returns: $cache/$asset
+githubassetdownload () {
+    local repo release asset cache
+    repo=$1
+    release=$2
+    asset=$3
+    cache=$4
+    download $(githubasseturl "$repo" "$release" "$asset") $asset $cache
+    echo $cache/$asset
 }
 
 # usage:   cleorelease $product
@@ -69,72 +92,72 @@ mysqlurl () {
     echo "http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-$version.tar.gz"
 }
 
-# usage:   etag $url
-# returns: the ETag for $url, or error if the connection fails
-etag () {
-    local url
-    url=$1
-    if headers=`wget -S --spider -nv $url 2>&1`; then
-        echo $headers | sed -n 's/.*ETag: *"\(.*\)".*/\1/p'
-    else
-        echo error
-    fi
-}
-
-# usage:   download $url $installer
-# returns: the install file name
+# usage:   download $url $target [$cache]
+# returns: the target file name in the $cache (default is /vagrant/cache)
 download () {
-    local url installer repo tag tagfile
+    local url target cache tag tagfile
     url=$1
-    installer=$2
-    repo="/vagrant/cache"
-    if [ ! -e $repo ] ; then mkdir $repo; fi
-    tag=$(etag $url)
-    tagfile="$repo/$installer.etag"
-    if [ "$tag" = "error" ]; then
-        echo "connection error: reusing cached $repo/$installer" 1>&2
-        echo $repo/$installer; return
-    elif [ -f $tagfile -a "$tag" ]; then
-        if [ "$tag" = $(cat $tagfile 2>/dev/null) ] ; then
-            echo "cache etag matches: reusing cached $repo/$installer" 1>&2
-            echo $repo/$installer
-            return
+    target=$2
+    cache=${3:-"/vagrant/cache"}
+    if [ ! -e $cache ] ; then mkdir $cache; fi
+    # get the current etag
+    tagfile="$cache/$target.etag"
+    if [ -s $tagfile ]; then
+        tag="\"$(cat $tagfile 2>/dev/null)\""
+    else
+        tag=null
+    fi
+    # attempt to download the target using current etag, if any
+    echo "downloading $cache/$target from $url (current etag=$(cat $tagfile 2>/dev/null))" 1>&2
+    if wget -nv -S --header="If-None-Match: $tag" -O $cache/$target.tmp $url 2> $cache/$target.tmp.h; then
+        tag=$(sed -n '0,/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $cache/$target.tmp.h)
+        if [ "$tag" ]; then
+            echo $tag > $tagfile
         fi
+        if [ -s $cache/$target.tmp ]; then
+            mv -f $cache/$target.tmp $cache/$target
+            echo "successful download: $cache/$target (new etag=$tag)" 1>&2
+        else
+          echo "empty download: reusing cached $cache/$target" 1>&2
+        fi
+    elif grep 'HTTP/1\.1 304' $cache/$target.tmp.h >/dev/null 2>&1; then
+        echo "file not modified: reusing cached $cache/$target" 1>&2
+    else
+        echo "connection error: reusing cached $cache/$target" 1>&2
     fi
-    # download the installer
-    echo "downloading $repo/$installer from $url (tag=$tag file=$(cat $tagfile 2>/dev/null))" 1>&2
-    wget -nv -O $repo/$installer $url
-    if [ "$tag" ]; then
-        echo $tag > $tagfile
-    fi
-    echo $repo/$installer
+    rm $cache/$target.tmp.h 2>/dev/null
+    rm $cache/$target.tmp   2>/dev/null
+    echo $cache/$target
 }
 
-# usage:   cleodownload $product [$release]
+# usage:   cleodownload $product [$release] [$cache]
 # returns: the install file name
 cleodownload () {
-    local product release
+    local product release cache
     product=$1
-    release=$2
-    echo $(download $(cleourl $product $release) "$product$release.bin")
+    release=${2:-$(cleorelease $product)}
+    cache=$3
+    echo $(download $(cleourl $product $release) "$product$release.bin" $cache)
 }
 
-# usage:   patchdownload $product $release $patch
+# usage:   patchdownload $product $release $patch [$cache]
 # returns: the install file name
 patchdownload () {
-    local product release patch
+    local product release patch [$cache]
     product=$1
     release=$2
     patch=$3
-    echo $(download $(patchurl $product $release $patch) "$product.$release.$patch.zip")
+    cache=$4
+    echo $(download $(patchurl $product $release $patch) "$product$release.$patch.zip" $cache)
 }
 
-# usage:   mysqldownload $version
+# usage:   mysqldownload $version [$cache]
 # returns: the downloaded install file name
 mysqldownload () {
-    local version
+    local version cache
     version=$1
-    echo $(download $(mysqlurl $version) "mysql-connector.tar.gz")
+    cache=$2
+    echo $(download $(mysqlurl $version) "mysql-connector.tar.gz" $cache)
 }
 
 # usage:   issuerfiles [issuerdir]
@@ -209,17 +232,17 @@ END
 
 # This definition stops the following lines choking if HOME isn't
 # defined.
-HOME			= .
-RANDFILE		= $ENV::HOME/.rnd
+HOME                    = .
+RANDFILE                = $ENV::HOME/.rnd
 
 # Extra OBJECT IDENTIFIER info:
-#oid_file		= $ENV::HOME/.oid
-oid_section		= new_oids
+#oid_file               = $ENV::HOME/.oid
+oid_section             = new_oids
 
 # To use this configuration file with the "-extfile" option of the
 # "openssl x509" utility, name here the section containing the
 # X.509v3 extensions to use:
-# extensions		= 
+# extensions            =
 # (Alternatively, use a configuration file that has only
 # X.509v3 extensions in its main [= default] section.)
 
