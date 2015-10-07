@@ -46,17 +46,23 @@ githubassetdownload () {
 # usage:   cleorelease $product
 # returns: the current release of $product
 cleorelease () {
-    local product
-    product=$1
-    if [ "$product" = "vltrader" ]; then
-        echo 5.2
-    elif [ "$product" = "harmony" ]; then
-        echo 5.2
-    elif [ "$product" = "unify" ]; then
-        echo 2.3
-    else
-        echo ''
-    fi
+    case "$1" in
+    "vltrader") echo 5.2;;
+    "harmony")  echo 5.2;;
+    "unify")    echo 2.3;;
+    "vlproxy")  echo 3.4;;
+    esac
+}
+
+# usage:   nexusname $product
+# returns: the nexus name $product
+nexusname () {
+    case "$1" in
+    "vltrader") echo VLTrader;;
+    "harmony")  echo Harmony;;
+    "unify")    echo Unify;;
+    "vlproxy")  echo VLProxy
+    esac
 }
 
 # usage:   cleourl "product" ["release"]
@@ -67,7 +73,7 @@ cleourl () {
     product=$1
     release=$2
     os="Linux"
-    if [ "$release" = $(cleorelease $product) -o -z "$release" ]; then release=''; else release=_$release; fi
+    if [ "$release" = "$(cleorelease $product)" -o -z "$release" ]; then release=''; else release=_$release; fi
     # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
     jre=1.7
     if [ "$product" = "unify" ]; then os="Ubuntu"; fi
@@ -82,6 +88,20 @@ patchurl () {
     release=$2
     patch=$3
     echo "http://www.cleo.com/Web_Install/PatchBase_$release/$product/$patch/$patch.zip"
+}
+
+# usage:   nexusurl "product" ["release"]
+# returns: the download URL for Cleo product "product", optionally including "release", from Nexus
+# note:    supports Linux/Ubuntu for Unify
+nexusurl () {
+    local product release os jre contd
+    product=$(nexusname $1)
+    release=$2
+    os="linux64"
+    jre=17
+    contd="10.10.1.57"
+    if [ "$product" = "Unify" ]; then os="ubuntu"; fi
+    echo "http://$contd/nexus/service/local/repositories/releases/content/com/cleo/installers/$product/$release/$product-$release-$os-jre$jre.bin"
 }
 
 # usage:   mysqlurl "version"
@@ -117,12 +137,12 @@ download () {
     if [ -s $tagfile ]; then
         tag="\"$(cat $tagfile 2>/dev/null)\""
     else
-        tag=null
+        tag="\"null\""
     fi
     # attempt to download the target using current etag, if any
     speak "checking $target..." \
           "downloading $cache/$target from $url (current etag=$(cat $tagfile 2>/dev/null))"
-    if wget -nv -S --header="If-None-Match: $tag" -O $cache/$target.tmp $url 2> $cache/$target.tmp.h; then
+    if wget -nv -S --header="If-None-Match: $tag" -O $cache/$target.tmp "$url" 2> $cache/$target.tmp.h; then
         tag=$(sed -n '0,/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $cache/$target.tmp.h)
         if [ "$tag" ]; then
             echo $tag > $tagfile
@@ -141,7 +161,7 @@ download () {
         speak "connection error: $target not updated" \
               "connection error: reusing cached $cache/$target" 1>&2
     fi
-    rm $cache/$target.tmp.h 2>/dev/null
+    # rm $cache/$target.tmp.h 2>/dev/null
     rm $cache/$target.tmp   2>/dev/null
     echo $cache/$target
 }
@@ -165,6 +185,16 @@ patchdownload () {
     patch=$3
     cache=$4
     echo $(download $(patchurl $product $release $patch) "$product$release.$patch.zip" $cache)
+}
+
+# usage:   nexusdownload $product [$release] [$cache]
+# returns: the install file name
+nexusdownload () {
+    local product release cache
+    product=$1
+    release=${2:-$(cleorelease $product)}
+    cache=$3
+    echo $(download $(nexusurl $product $release) "$product$release.nexus.bin" $cache)
 }
 
 # usage:   mysqldownload $version [$cache]
