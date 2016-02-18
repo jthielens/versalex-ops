@@ -331,3 +331,24 @@ issue() {
         0x`uuidgen|sed 's/-//g'` -out $key.crt 2>/dev/null
     openssl pkcs8 -topk8 -in $key.key  -out $key.p8  -passout pass:cleo 2>/dev/null
 }
+
+case $1 in
+githuburl)           shift; githuburl $@;;
+githubdownload)      shift; githubdownload $@;;
+githubasseturl)      shift; githubasseturl $@;;
+githubassetdownload) shift; githubassetdownload $@;;
+cleorelease)         shift; cleorelease $@;;
+nexusname)           shift; nexusname $@;;
+cleourl)             shift; cleourl $@;;
+patchurl)            shift; patchurl $@;;
+nexusurl)            shift; nexusurl $@;;
+mysqlurl)            shift; mysqlurl $@;;
+speak)               shift; speak $@;;
+download)            shift; download $@;;
+cleodownload)        shift; cleodownload $@;;
+patchdownload)       shift; patchdownload $@;;
+nexusdownload)       shift; nexusdownload $@;;
+mysqldownload)       shift; mysqldownload $@;;
+issuerfiles)         shift; issuerfiles $@;;
+issue)               shift; issue $@;;
+esac
