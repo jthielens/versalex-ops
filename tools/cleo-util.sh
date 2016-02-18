@@ -17,7 +17,11 @@ githubdownload () {
     cache=${3:-"/usr/local/bin"}
     artifact=${2##*/}
     download $(githuburl "$repo" "$path") $artifact $cache
-    sudo chmod a+x "$cache/$artifact"
+    if [ $(id -u) ]; then
+        sudo chmod a+x "$cache/$artifact"
+    else
+        chmod a+x "$cache/$artifact"
+    fi
     echo $artifact
 }
 
