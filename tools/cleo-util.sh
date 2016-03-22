@@ -69,17 +69,29 @@ nexusname () {
     esac
 }
 
+# usage:   jre $release
+# returns: 1.7 if $release is less than 5.3, otherwise 1.8
+jre () {
+    local release
+    release=$1
+    if [ "$(echo "$release\n5.3" | sort | head -n 1)" = "5.3" ]; then
+        echo 1.8
+    else
+        echo 1.7
+    fi
+}
+
 # usage:   cleourl "product" ["release"]
 # returns: the download URL for Cleo product "product", optionally including "release"
 # note:    supports Linux/Ubuntu for Unify
 cleourl () {
-    local product release os
+    local product release jre os
     product=$1
     release=$2
     os="Linux"
     if [ "$release" = "$(cleorelease $product)" -o -z "$release" ]; then release=''; else release=_$release; fi
     # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
-    jre=1.7
+    jre=$(jre $release)
     if [ "$product" = "unify" ]; then os="Ubuntu"; fi
     echo "http://www.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.bin"
 }
@@ -102,7 +114,7 @@ nexusurl () {
     product=$(nexusname $1)
     release=$2
     os="linux64"
-    jre=17
+    jre=$(jre $release | tr -d .)
     contd="10.10.1.57"
     if [ "$product" = "Unify" ]; then os="ubuntu"; fi
     echo "http://$contd/nexus/service/local/repositories/releases/content/com/cleo/installers/$product/$release/$product-$release-$os-jre$jre.bin"
@@ -343,6 +355,7 @@ githubasseturl)      shift; githubasseturl $@;;
 githubassetdownload) shift; githubassetdownload $@;;
 cleorelease)         shift; cleorelease $@;;
 nexusname)           shift; nexusname $@;;
+jre)                 shift; jre $@;;
 cleourl)             shift; cleourl $@;;
 patchurl)            shift; patchurl $@;;
 nexusurl)            shift; nexusurl $@;;
