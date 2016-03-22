@@ -74,7 +74,8 @@ nexusname () {
 jre () {
     local release
     release=$1
-    if [ "$(echo "$release\n5.3" | sort | head -n 1)" = "5.3" ]; then
+    if [ $(sort <<< "$release
+5.3" | head -n 1) = "5.3" ]; then
         echo 1.8
     else
         echo 1.7
