@@ -1,22 +1,42 @@
 #!/bin/sh
-# usage:   githuburl "jthielens/versalex-ops" "service/cleo-service"
+# usage:   githuburl "jthielens/versalex-ops" [$branch] "service/cleo-service"
 # returns: the github URL for file in repo
 githuburl () {
-    local repo path
+    local repo branch path
     repo=$1
+    branch=master
     path=$2
-    echo "https://raw.githubusercontent.com/$repo/master/$path"
+    if [ -n "$3" ]; then branch=$2; path=$3; fi
+    echo "https://raw.githubusercontent.com/$repo/$branch/$path"
 }
 
-# usage:   githubdownload "github-user/repo" "path/artifact" [$cache]
+# usage:   githubdownload "github-user/repo" [$branch] "path/artifact" [$cache]
 # returns: /usr/local/bin/$artifact
+# note:    3 argument form defaults $branch if $cache is a directory, otherwise defaults $cache
 githubdownload () {
-    local repo path artifact cache
-    repo=$1
-    path=$2
-    cache=${3:-"/usr/local/bin"}
+    local repo branch path artifact cache
+    repo=$1; shift
+    if [ $# -ge 3 ]; then
+        branch=$1
+        path=$2
+        cache=$3
+    elif [ $# -eq 2 ]; then
+        if [ -d $2 ]; then
+            branch=master
+            path=$1
+            cache=$2
+        else
+            branch=$1
+            path=$2
+            cache=/usr/locall/bin
+        fi
+    else
+        branch=master
+        path=$1
+        cache=/usr/local/bin
+    fi
     artifact=${2##*/}
-    download $(githuburl "$repo" "$path") $artifact $cache
+    download $(githuburl "$repo" "$branch" "$path") $artifact $cache
     if [ "$(id -u)" != "0" ]; then
         sudo chmod a+x "$cache/$artifact"
     else
