@@ -1,4 +1,41 @@
 #!/bin/sh
+# usage:   mvnurl "group%artifact%version"
+# returns: the mavencentral uri for the artifact
+mvnurl () {
+    local gav group site artifact
+    gav=$1
+    group=$(echo ${gav%%%*} | sed 's/\./\//g')
+    if [ $(echo "$group" | sed -n '/^com\/cleo\//p') ]; then
+        if [ $(echo $gav | sed -n '/SNAPSHOT$/p') ]; then
+            site=snapshots
+        else
+            site=releases
+        fi
+        artifact=$(echo $gav | sed 's/\(.*\)%\(.*\)%\(.*\)/\&g=\1\&a=\2\&v=\3\&e=jar/')
+        echo "http://10.10.1.57/nexus/service/local/artifact/maven/redirect?r=$site$artifact"
+    else
+        site="http://central.maven.org/maven2"
+        artifact=$(echo $gav | sed 's/\(.*\)%\(.*\)%\(.*\)/\2\/\3\/\2-\3.jar/')
+        echo "$site/$group/$artifact"
+    fi
+}
+
+# usage:   mvnfile "group%artifact%version"
+# returns: the maven filename
+mvnfile () {
+    echo $1 | sed 's/\(.*\)%\(.*\)%\(.*\)/\2-\3.jar/'
+}
+
+# usage:   mvndownload "group%artifact%version" [$cache]
+# returns: /usr/local/bin/$artifact
+mvndownload () {
+    local url asset cache
+    url=$(mvnurl $1)
+    cache=$2
+    asset=$(mvnfile $1)
+    echo $(download $url $asset $cache)
+}
+
 # usage:   githuburl "jthielens/versalex-ops" [$branch] "service/cleo-service"
 # returns: the github URL for file in repo
 githuburl () {
@@ -36,11 +73,11 @@ githubdownload () {
         cache=/usr/local/bin
     fi
     artifact=${path##*/}
-    download $(githuburl "$repo" "$branch" "$path") $artifact $cache
+    artifact=$(download $(githuburl "$repo" "$branch" "$path") $artifact $cache)
     if [ "$(id -u)" != "0" ]; then
-        sudo chmod a+x "$cache/$artifact"
+        sudo chmod a+x "$artifact"
     else
-        chmod a+x "$cache/$artifact"
+        chmod a+x "$artifact"
     fi
     echo $artifact
 }
@@ -63,8 +100,7 @@ githubassetdownload () {
     release=$2
     asset=$3
     cache=$4
-    download $(githubasseturl "$repo" "$release" "$asset") $asset $cache
-    echo $cache/$asset
+    echo $(download $(githubasseturl "$repo" "$release" "$asset") $asset $cache)
 }
 
 # usage:   cleorelease $product
@@ -161,13 +197,13 @@ speak () {
 }
 
 # usage:   download $url $target [$cache]
-# returns: the target file name in the $cache (default is /vagrant/cache)
+# returns: the target file name in the $cache (default is $HOME/.cleo/cache)
 download () {
     local url target cache tag tagfile
     url=$1
     target=$2
-    cache=${3:-"/vagrant/cache"}
-    if [ ! -e $cache ] ; then mkdir $cache; fi
+    cache=${3:-"$HOME/.cleo/cache"}
+    if [ ! -e $cache ]; then mkdir -p $cache; fi
     # get the current etag
     tagfile="$cache/$target.etag"
     if [ -s $tagfile ]; then
@@ -179,7 +215,7 @@ download () {
     speak "checking $target..." \
           "downloading $cache/$target from $url (current etag=$(cat $tagfile 2>/dev/null))"
     if wget -nv -S --header="If-None-Match: $tag" -O $cache/$target.tmp "$url" 2> $cache/$target.tmp.h; then
-        tag=$(sed -n '0,/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $cache/$target.tmp.h)
+        tag=$(sed -n '/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $cache/$target.tmp.h)
         if [ "$tag" ]; then
             echo $tag > $tagfile
         fi
@@ -369,6 +405,9 @@ issue() {
 }
 
 case $1 in
+mvnurl)              shift; mvnurl $@;;
+mvnfile)             shift; mvnfile $@;;
+mvndownload)         shift; mvndownload $@;;
 githuburl)           shift; githuburl $@;;
 githubdownload)      shift; githubdownload $@;;
 githubasseturl)      shift; githubasseturl $@;;
