@@ -176,7 +176,13 @@ module VersaLex
             @type       = element.name
             @attributes = {}
             element.attributes.each {|a,v| @attributes[a]=v unless a=='text'&&v=='-'}
-            @attributes['text'] = (@attributes['text']||'') + element.text if element.text
+            if element.text
+              if @attributes['text']
+                @attributes['text'] = @attributes['text'] +': ' + element.text
+              else
+                @attributes['text'] = element.text
+              end
+            end
           end
         end
         case @type
@@ -219,6 +225,7 @@ module VersaLex
     def inspect_colorfully
       color = COLOR[@attributes['color']] if @attributes
       color = COLOR["blue"] if @type=='Transfer' || @type=='File'
+      color = COLOR["green"] if @type=='Result'
       if color
         "\e[#{color}m#{@id}/#{@time.xmlschema(3)} #{message}\e[0m"
       else
