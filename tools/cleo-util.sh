@@ -404,6 +404,35 @@ issue() {
     openssl pkcs8 -topk8 -in $key.key  -out $key.p8  -passout pass:cleo 2>/dev/null
 }
 
+# usage:   cleoapi [get|post] [user:pass@][host:port] resource [data]
+# returns: the get/post output
+#          host:port defaults to localhost:5080
+cleoapi() {
+    local verb user password host resource data
+    if [ "$1" = "get" -o "$1" = "post" ]; then verb=$1; shift; fi
+    if [ ! "${1/@//}" = "$1" ]; then
+        host=${1#*@}
+        user=${1%%@*}
+        password=${user#*:}
+        user=${user%%:*}
+        shift;
+    elif [ ! "${1/[.:]//}" = "$1" ]; then
+        host=$1
+        shift
+    fi
+    if [ -z "$user"     ]; then user=administrator ; fi
+    if [ -z "$password" ]; then password=Admin     ; fi
+    if [ -z "$host"     ]; then host=localhost:5080; fi
+    resource=$1
+    data=$2
+    if [ -z "$verb" ]; then if [ "$data" ]; then verb=post; else verb=get; fi fi
+    if [ "$data" ]; then data=--post-data="$data"; fi
+    wget --user=$user --password=$password --auth-no-challenge --header='Content-Type: application/json' $data -O - -q http://$host/api/$resource
+}
+
+# returns: nothing, but creates key.{key,req,crt,p8}
+#          issuerdir defaults to $HOME
+
 case $1 in
 mvnurl)              shift; mvnurl $@;;
 mvnfile)             shift; mvnfile $@;;
@@ -427,4 +456,5 @@ nexusdownload)       shift; nexusdownload $@;;
 mysqldownload)       shift; mysqldownload $@;;
 issuerfiles)         shift; issuerfiles $@;;
 issue)               shift; issue $@;;
+cleoapi)             shift; cleoapi $@;;
 esac
