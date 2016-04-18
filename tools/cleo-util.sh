@@ -434,27 +434,27 @@ cleoapi() {
 #          issuerdir defaults to $HOME
 
 case $1 in
-mvnurl)              shift; mvnurl $@;;
-mvnfile)             shift; mvnfile $@;;
-mvndownload)         shift; mvndownload $@;;
-githuburl)           shift; githuburl $@;;
-githubdownload)      shift; githubdownload $@;;
-githubasseturl)      shift; githubasseturl $@;;
-githubassetdownload) shift; githubassetdownload $@;;
-cleorelease)         shift; cleorelease $@;;
-nexusname)           shift; nexusname $@;;
-jre)                 shift; jre $@;;
-cleourl)             shift; cleourl $@;;
-patchurl)            shift; patchurl $@;;
-nexusurl)            shift; nexusurl $@;;
-mysqlurl)            shift; mysqlurl $@;;
-speak)               shift; speak $@;;
-download)            shift; download $@;;
-cleodownload)        shift; cleodownload $@;;
-patchdownload)       shift; patchdownload $@;;
-nexusdownload)       shift; nexusdownload $@;;
-mysqldownload)       shift; mysqldownload $@;;
-issuerfiles)         shift; issuerfiles $@;;
-issue)               shift; issue $@;;
-cleoapi)             shift; cleoapi $@;;
+mvnurl)              shift; mvnurl "$@";;
+mvnfile)             shift; mvnfile "$@";;
+mvndownload)         shift; mvndownload "$@";;
+githuburl)           shift; githuburl "$@";;
+githubdownload)      shift; githubdownload "$@";;
+githubasseturl)      shift; githubasseturl "$@";;
+githubassetdownload) shift; githubassetdownload "$@";;
+cleorelease)         shift; cleorelease "$@";;
+nexusname)           shift; nexusname "$@";;
+jre)                 shift; jre "$@";;
+cleourl)             shift; cleourl "$@";;
+patchurl)            shift; patchurl "$@";;
+nexusurl)            shift; nexusurl "$@";;
+mysqlurl)            shift; mysqlurl "$@";;
+speak)               shift; speak "$@";;
+download)            shift; download "$@";;
+cleodownload)        shift; cleodownload "$@";;
+patchdownload)       shift; patchdownload "$@";;
+nexusdownload)       shift; nexusdownload "$@";;
+mysqldownload)       shift; mysqldownload "$@";;
+issuerfiles)         shift; issuerfiles "$@";;
+issue)               shift; issue "$@";;
+cleoapi)             shift; cleoapi "$@";;
 esac
