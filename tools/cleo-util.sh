@@ -410,13 +410,13 @@ issue() {
 cleoapi() {
     local verb user password host resource data
     if [ "$1" = "get" -o "$1" = "post" ]; then verb=$1; shift; fi
-    if [ ! "${1/@//}" = "$1" ]; then
+    if [ ! "${1#*@}" = "$1" ]; then
         host=${1#*@}
         user=${1%%@*}
         password=${user#*:}
         user=${user%%:*}
         shift;
-    elif [ ! "${1/[.:]//}" = "$1" ]; then
+    elif [ ! "${1#*[.:]}" = "$1" ]; then
         host=$1
         shift
     fi
