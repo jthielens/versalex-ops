@@ -425,9 +425,16 @@ cleoapi() {
     if [ -z "$host"     ]; then host=localhost:5080; fi
     resource=$1
     data=$2
-    if [ -z "$verb" ]; then if [ "$data" ]; then verb=post; else verb=get; fi fi
-    if [ "$data" ]; then data=--post-data="$data"; fi
-    wget --user=$user --password=$password --auth-no-challenge --header='Content-Type: application/json' $data -O - -q http://$host/api/$resource
+    if [ -z "$verb" ]; then if [ "$data" ]; then verb=POST; else verb=GET; fi fi
+    if [ "$data" ]; then
+        echo $data > /tmp/post.$$
+        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
+            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -q http://$host/api/$resource
+        rm /tmp/post.$$
+    else
+        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
+            --header='Content-Type: application/json' -O - -q http://$host/api/$resource
+    fi
 }
 
 # returns: nothing, but creates key.{key,req,crt,p8}
