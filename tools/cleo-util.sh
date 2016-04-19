@@ -404,12 +404,12 @@ issue() {
     openssl pkcs8 -topk8 -in $key.key  -out $key.p8  -passout pass:cleo 2>/dev/null
 }
 
-# usage:   cleoapi [get|post] [user:pass@][host:port] resource [data]
+# usage:   cleoapi [get|post|put|delete] [user:pass@][host:port] resource [data]
 # returns: the get/post output
 #          host:port defaults to localhost:5080
 cleoapi() {
     local verb user password host resource data
-    if [ "$1" = "get" -o "$1" = "post" ]; then verb=$1; shift; fi
+    if [ "$1" = "get" -o "$1" = "post" -o "$1" = "put" -o "$1" = "delete" ]; then verb=$(echo $1 | tr 'a-z' 'A-Z'); shift; fi
     if [ ! "${1#*@}" = "$1" ]; then
         host=${1#*@}
         user=${1%%@*}
@@ -429,11 +429,11 @@ cleoapi() {
     if [ "$data" ]; then
         echo $data > /tmp/post.$$
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
-            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -q http://$host/api/$resource
+            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -nv http://$host/api/$resource
         rm /tmp/post.$$
     else
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
-            --header='Content-Type: application/json' -O - -q http://$host/api/$resource
+            --header='Content-Type: application/json' -O - -nv http://$host/api/$resource
     fi
 }
 
