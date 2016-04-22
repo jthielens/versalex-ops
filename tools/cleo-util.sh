@@ -107,10 +107,10 @@ githubassetdownload () {
 # returns: the current release of $product
 cleorelease () {
     case "$1" in
-    "vltrader") echo 5.2;;
-    "harmony")  echo 5.2;;
+    "vltrader") echo 5.3;;
+    "harmony")  echo 5.3;;
     "unify")    echo 2.3;;
-    "vlproxy")  echo 3.4;;
+    "vlproxy")  echo 3.5;;
     esac
 }
 
@@ -130,7 +130,7 @@ nexusname () {
 jre () {
     local release
     release=$1
-    if [ "$(echo $release/5.3 | tr / \\n | sort | head -n 1)" = "5.3" ]; then
+    if [ =z "$release" -o "$(echo $release/5.3 | tr / \\n | sort | head -n 1)" = "5.3" ]; then
         echo 1.8
     else
         echo 1.7
