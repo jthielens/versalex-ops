@@ -408,11 +408,13 @@ issue() {
 # returns: the get/post output
 #          host:port defaults to localhost:5080
 cleoapi() {
-    local verb user password host resource data
+    local verb user password protocol host port resource data
     if [ "$1" = "get" -o "$1" = "post" -o "$1" = "put" -o "$1" = "delete" ]; then verb=$(echo $1 | tr 'a-z' 'A-Z'); shift; fi
     if [ ! "${1#*@}" = "$1" ]; then
         host=${1#*@}
         user=${1%%@*}
+        port=${host#*:}
+        host=${host%%:*}
         password=${user#*:}
         user=${user%%:*}
         shift;
@@ -422,18 +424,20 @@ cleoapi() {
     fi
     if [ -z "$user"     ]; then user=administrator ; fi
     if [ -z "$password" ]; then password=Admin     ; fi
-    if [ -z "$host"     ]; then host=localhost:5080; fi
+    if [ -z "$host"     ]; then host=localhost     ; fi
+    if [ -z "$port"     ]; then port=6080          ; fi
     resource=$1
     data=$2
+    if [ "$port" = "80" -o "$port" = "5080" ]; then protocol=http; else protocol=https; fi
     if [ -z "$verb" ]; then if [ "$data" ]; then verb=POST; else verb=GET; fi fi
     if [ "$data" ]; then
         echo $data > /tmp/post.$$
-        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
-            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -nv http://$host/api/$resource
+        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
+            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -nv $protocol://$host:$port/api/$resource
         rm /tmp/post.$$
     else
-        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb \
-            --header='Content-Type: application/json' -O - -nv http://$host/api/$resource
+        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
+            --header='Content-Type: application/json' -O - -nv $protocol://$host:$port/api/$resource
     fi
 }
 
