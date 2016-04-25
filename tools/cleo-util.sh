@@ -130,7 +130,7 @@ nexusname () {
 jre () {
     local release
     release=$1
-    if [ =z "$release" -o "$(echo $release/5.3 | tr / \\n | sort | head -n 1)" = "5.3" ]; then
+    if [ -z "$release" -o "$(echo $release/5.3 | tr / \\n | sort | head -n 1)" = "5.3" ]; then
         echo 1.8
     else
         echo 1.7
