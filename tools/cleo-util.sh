@@ -251,7 +251,7 @@ cleodownload () {
 # usage:   patchdownload $product $release $patch [$cache]
 # returns: the install file name
 patchdownload () {
-    local product release patch [$cache]
+    local product release patch $cache
     product=$1
     release=$2
     patch=$3
