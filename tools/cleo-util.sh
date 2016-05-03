@@ -137,19 +137,22 @@ jre () {
     fi
 }
 
-# usage:   cleourl "product" ["release"]
+# usage:   cleourl "product" ["release"] ["os"]
 # returns: the download URL for Cleo product "product", optionally including "release"
 # note:    supports Linux/Ubuntu for Unify
 cleourl () {
-    local product release jre os
+    local product release jre os ext
     product=$1
     release=$2
-    os="Linux"
+    os=Linux
+    os=${3:-Linux}
+    ext=bin
+    if [ "$os" = "Windows" ]; then ext=exe; fi
     if [ "$release" = "$(cleorelease $product)" -o -z "$release" ]; then release=''; else release=_$release; fi
     # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
     jre=$(jre $release)
     if [ "$product" = "unify" ]; then os="Ubuntu"; fi
-    echo "http://www.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.bin"
+    echo "http://www.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.$ext"
 }
 
 # usage:   patchurl "product" "release" "patch"
@@ -162,18 +165,18 @@ patchurl () {
     echo "http://www.cleo.com/Web_Install/PatchBase_$release/$product/$patch/$patch.zip"
 }
 
-# usage:   nexusurl "product" ["release"]
+# usage:   nexusurl "product" ["release"] ["os"]
 # returns: the download URL for Cleo product "product", optionally including "release", from Nexus
 # note:    supports Linux/Ubuntu for Unify
 nexusurl () {
-    local product release os jre contd
+    local product release os jre contd ext
     product=$(nexusname $1)
     release=$2
-    os="linux64"
+    if [ "$3" = "Windows" ]; then os=windows64; ext=exe; else os=linux64; ext=bin; fi
     jre=$(jre $release | tr -d .)
     contd="10.10.1.57"
     if [ "$product" = "Unify" ]; then os="ubuntu"; fi
-    echo "http://$contd/nexus/service/local/repositories/releases/content/com/cleo/installers/$product/$release/$product-$release-$os-jre$jre.bin"
+    echo "http://$contd/nexus/service/local/repositories/releases/content/com/cleo/installers/$product/$release/$product-$release-$os-jre$jre.$ext"
 }
 
 # usage:   mysqlurl "version"
@@ -251,7 +254,7 @@ cleodownload () {
 # usage:   patchdownload $product $release $patch [$cache]
 # returns: the install file name
 patchdownload () {
-    local product release patch $cache
+    local product release patch cache
     product=$1
     release=$2
     patch=$3
