@@ -69,6 +69,7 @@ if ! [ "$1" = "install" -o "$1" = "remove" ]; then
 fi
 op=$1
 CLEOHOME=.
+VLPROXYPORT=8080
 init=`ps -p1 | grep systemd > /dev/null && echo systemd || echo upstart`
 if [ $init = upstart ]; then
   if [ $(printf "1.4\n$(initctl --version | sed -n 's/.*upstart \([0-9\.]*\).*/\1/p')" | sort -V | head -1) != "1.4" ]; then
@@ -122,8 +123,8 @@ elif [ "$2" = "cleo-vlproxy" -o -e "$2/VLProxyd" ]; then
   exec='$CLEOHOME/VLProxyc -s service'
   stop='$CLEOHOME/VLProxyc -s service,stop'
   preloop=:
-  startloop='while ! grep rmiPort $CLEOHOME/schedule.lck > /dev/null 2>&1 && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
-  stoploop='while [ -e $CLEOHOME/schedule.lck ] && kill -0 $MAINPID > /dev/null 2>&1; do sleep 1; done'
+  startloop="while ! lsof -i :$VLPROXYPORT > /dev/null 2>&1 && kill -0 \$MAINPID > /dev/null 2>&1; do sleep 1; done"
+  stoploop="while lsof -i :$VLPROXYPORT && kill -0 \$MAINPID > /dev/null 2>&1; do sleep 1; done"
   if ! [ "$2" = "$servicename" ]; then CLEOHOME=$2; fi
 else
   if [ -e $2 -o ${2#*/} != $2 ]; then
@@ -205,7 +206,7 @@ else
     runuid=`stat -c '%U' $CLEOHOME/$proofofinstall`
     rungid=`stat -c '%G' $CLEOHOME/$proofofinstall`
     if [ $oldupstart ]; then
-      exec=su -c \'$exec\' $runuid
+      exec="su -c '$exec' $runuid"
       suppress='#'
     fi
     # if cat - << SHELL
@@ -240,7 +241,7 @@ SHELL
     then
       echo "error: cannot install $servicename: perhaps you forgot to sudo?" 1>&2
     else
-      ln -s /lib/init/upstart-job /etc/init.d/$servicename
+#      ln -s /lib/init/upstart-job /etc/init.d/$servicename
       initctl reload-configuration
     fi
   else
