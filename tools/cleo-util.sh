@@ -65,7 +65,7 @@ githubdownload () {
         else
             branch=$1
             path=$2
-            cache=/usr/locall/bin
+            cache=/usr/local/bin
         fi
     else
         branch=master
