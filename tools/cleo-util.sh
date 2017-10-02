@@ -107,8 +107,8 @@ githubassetdownload () {
 # returns: the current release of $product
 cleorelease () {
     case "$1" in
-    "vltrader") echo 5.4;;
-    "harmony")  echo 5.4;;
+    "vltrader") echo 5.4.1;;
+    "harmony")  echo 5.4.1;;
     "unify")    echo 2.3;;
     "vlproxy")  echo 3.5;;
     esac
