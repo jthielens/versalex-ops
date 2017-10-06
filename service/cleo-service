@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # usage: sudo cleo-service install (service|path) [alias]
 #        sudo cleo-service remove  service
 #
@@ -173,7 +173,7 @@ User=`stat -c '%U' $CLEOHOME/$proofofinstall`
 Group=`stat -c '%G' $CLEOHOME/$proofofinstall`
 Environment=CLEOHOME=$CLEOHOME
 ExecStart=${exec//\$CLEOHOME/$CLEOHOME}
-ExecStartPost=/bin/sh -ec '/bin/echo \$MAINPID>$CLEOHOME/cleo.pid;${preloop//\$CLEOHOME/CLEOHOME}; ${startloop//\$CLEOHOME/$CLEOHOME}'
+ExecStartPost=/bin/sh -ec '/bin/echo \$MAINPID>$CLEOHOME/cleo.pid;${preloop//\$CLEOHOME/$CLEOHOME}; ${startloop//\$CLEOHOME/$CLEOHOME}'
 ExecStop=/bin/sh -ec '${stop//\$CLEOHOME/$CLEOHOME};${preloop//\$CLEOHOME/$CLEOHOME};${stoploop//\$CLEOHOME/$CLEOHOME};/bin/rm $CLEOHOME/cleo.pid'
 
 [Install]
