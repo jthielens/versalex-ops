@@ -107,10 +107,10 @@ githubassetdownload () {
 # returns: the current release of $product
 cleorelease () {
     case "$1" in
-    "vltrader") echo 5.4.1;;
-    "harmony")  echo 5.4.1;;
+    "vltrader") echo 5.6.2.2;;
+    "harmony")  echo 5.6.2.2;;
     "unify")    echo 2.3;;
-    "vlproxy")  echo 3.5;;
+    "vlproxy")  echo 3.8;;
     esac
 }
 
@@ -411,8 +411,10 @@ issue() {
 # returns: the get/post output
 #          host:port defaults to localhost:5080
 cleoapi() {
-    local verb user password protocol host port resource data
-    if [ "$1" = "get" -o "$1" = "post" -o "$1" = "put" -o "$1" = "delete" ]; then verb=$(echo $1 | tr 'a-z' 'A-Z'); shift; fi
+    local verb user password protocol host port resource data mediatype
+    mediatype=application/json
+    if [ "$1" = "import" ]; then verb=POST; mediatype=application/octet-stream; shift;
+    elif [ "$1" = "get" -o "$1" = "post" -o "$1" = "put" -o "$1" = "delete" ]; then verb=$(echo $1 | tr 'a-z' 'A-Z'); shift; fi
     if [ ! "${1#*@}" = "$1" ]; then
         host=${1#*@}
         user=${1%%@*}
@@ -436,7 +438,7 @@ cleoapi() {
     if [ "$data" ]; then
         echo $data > /tmp/post.$$
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
-            --header='Content-Type: application/json' --body-file=/tmp/post.$$ -O - -nv $protocol://$host:$port/api/$resource
+            --header="Content-Type: $mediatype" --body-file=/tmp/post.$$ -O - -nv $protocol://$host:$port/api/$resource
         rm /tmp/post.$$
     else
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
