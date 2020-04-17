@@ -411,7 +411,7 @@ issue() {
 # returns: the get/post output
 #          host:port defaults to localhost:5080
 cleoapi() {
-    local verb user password protocol host port resource data mediatype
+    local verb user password protocol host port resource data datafile mediatype
     mediatype=application/json
     if [ "$1" = "import" ]; then verb=POST; mediatype=application/octet-stream; shift;
     elif [ "$1" = "get" -o "$1" = "post" -o "$1" = "put" -o "$1" = "delete" ]; then verb=$(echo $1 | tr 'a-z' 'A-Z'); shift; fi
@@ -436,10 +436,17 @@ cleoapi() {
     if [ "$port" = "80" -o "$port" = "5080" ]; then protocol=http; else protocol=https; fi
     if [ -z "$verb" ]; then if [ "$data" ]; then verb=POST; else verb=GET; fi fi
     if [ "$data" ]; then
-        echo $data > /tmp/post.$$
+        if [ "${data#@}" != "$data" ]; then
+            datafile=${data#@}
+        else
+            datafile=/tmp/post.$$
+            echo $data > /tmp/post.$$
+        fi
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
-            --header="Content-Type: $mediatype" --body-file=/tmp/post.$$ -O - -nv $protocol://$host:$port/api/$resource
-        rm /tmp/post.$$
+            --header="Content-Type: $mediatype" --body-file=$datafile -O - -nv $protocol://$host:$port/api/$resource
+        if [ "${data#@}" = "$data" ]; then
+            rm $datafile
+        fi
     else
         wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
             --header='Content-Type: application/json' -O - -nv $protocol://$host:$port/api/$resource
