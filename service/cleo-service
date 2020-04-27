@@ -163,7 +163,7 @@ if [ "$init" = "systemd" ]; then
   # shiny new systemd init system
   if [ "$op" = "install" ]; then
     # if cat - << SHELL
-    if ! tee /lib/systemd/system/$servicename.service > /dev/null << SHELL
+    if ! tee /etc/systemd/system/$servicename.service > /dev/null << SHELL
 [Unit]
 Description=$servicedisplay
 
@@ -186,11 +186,11 @@ SHELL
     fi
   else
     # op=remove
-    if [ -e /lib/systemd/system/$servicename.service ]; then
+    if [ -e /etc/systemd/system/$servicename.service ]; then
       # if systemctl disable $servicename > /dev/null 2>&1; then
       if systemctl disable $servicename; then
         systemctl stop $servicename > /dev/null 2>&1
-        rm /lib/systemd/system/$servicename.service
+        rm /etc/systemd/system/$servicename.service
       else
         echo "error: cannot remove $servicename: perhaps you forgot to sudo?" 1>&2
         exit 1

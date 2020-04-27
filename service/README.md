@@ -11,7 +11,7 @@ sudo cleo-service remove service
 
 Usage 1 installs and enables a service configuration file, depending on the init system in use on the platform.  For newer `systemd`-based systems:
 
-- *alias*.service is installed in `/lib/systemd/system/`
+- *alias*.service is installed in `/etc/systemd/system/`
 - the service is enabled with `systemctl enable service`
 - note that this action implicitly calls `systemctl daemon-reload`
 
