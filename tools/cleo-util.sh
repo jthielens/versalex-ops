@@ -152,7 +152,7 @@ cleourl () {
     if [ "$release" = "$(cleorelease $product)" -o -z "$release" ]; then release=''; else release=_$release; fi
     # if [ "$product" = "unify" -o "$release" ]; then jre=1.7; else jre=1.6; fi
     if [ "$product" = "unify" ]; then os="Ubuntu"; fi
-    echo "http://www.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.$ext"
+    echo "http://download.cleo.com/SoftwareUpdate/$product/release$release/jre$jre/InstData/$os(64-bit)/VM/install.$ext"
 }
 
 # usage:   patchurl "product" "release" "patch"
