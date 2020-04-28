@@ -240,10 +240,16 @@ module VersaLex
   #   CLEOHOME use this to automatically locate the Harmony.xml file.          #
   #----------------------------------------------------------------------------#
   def self.default_log(service)
+    service ||= 'cleo-harmony'
     begin
-      service ||= 'cleo-harmony'
       File.new("/etc/init/#{service}.conf").readlines.each do |line|
         return "#{$1}/logs/Harmony.xml" if line =~ /^env\s+CLEOHOME\s*=\s*(.*)/
+      end
+    rescue # throw away IO errors
+    end
+    begin
+      File.new("/etc/systemd/system/#{service}.service").readlines.each do |line|
+        return "#{$1}/logs/Harmony.xml" if line =~ /^Environment\s*=\s*CLEOHOME\s*=\s*(.*)/
       end
     rescue # throw away IO errors
     end
