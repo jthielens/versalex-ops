@@ -442,19 +442,20 @@ cleoapi() {
             datafile=/tmp/post.$$
             echo $data > /tmp/post.$$
         fi
-        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
+        if [ "$verb" = "POST" ]; then verb=""; else verb="--method=$verb"; fi
+        wget --user="$user" --password="$password" --auth-no-challenge $verb --no-check-certificate \
             --header="Content-Type: $mediatype" --body-file=$datafile -O - -nv $protocol://$host:$port/api/$resource
         if [ "${data#@}" = "$data" ]; then
             rm $datafile
         fi
     else
-        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
+        if [ "$verb" = "GET" ]; then verb=""; else verb="--method=$verb"; fi
+        wget --user="$user" --password="$password" --auth-no-challenge $verb --no-check-certificate \
             --header='Content-Type: application/json' -O - -nv $protocol://$host:$port/api/$resource
     fi
 }
 
-# returns: nothing, but creates key.{key,req,crt,p8}
-#          issuerdir defaults to $HOME
+# command dispatch
 
 case $1 in
 mvnurl)              shift; mvnurl "$@";;
