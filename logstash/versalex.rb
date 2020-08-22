@@ -240,18 +240,20 @@ module VersaLex
   #   CLEOHOME use this to automatically locate the Harmony.xml file.          #
   #----------------------------------------------------------------------------#
   def self.default_log(service)
-    service ||= 'cleo-harmony'
     begin
-      File.new("/etc/init/#{service}.conf").readlines.each do |line|
-        return "#{$1}/logs/Harmony.xml" if line =~ /^env\s+CLEOHOME\s*=\s*(.*)/
+      begin
+        service ||= 'cleo-harmony'
+        File.new("/etc/init/#{service}.conf").readlines.each do |line|
+          return "#{$1}/logs/Harmony.xml" if line =~ /^env\s+CLEOHOME\s*=\s*(.*)/
+        end
+      rescue # throw away IO errors
       end
-    rescue # throw away IO errors
-    end
-    begin
-      File.new("/etc/systemd/system/#{service}.service").readlines.each do |line|
-        return "#{$1}/logs/Harmony.xml" if line =~ /^Environment\s*=\s*CLEOHOME\s*=\s*(.*)/
+      begin
+        File.new("/etc/systemd/system/#{service}.service").readlines.each do |line|
+          return "#{$1}/logs/Harmony.xml" if line =~ /^Environment\s*=\s*CLEOHOME\s*=\s*(.*)/
+        end
+      rescue # throw away IO errors
       end
-    rescue # throw away IO errors
     end
     nil
   end
@@ -321,12 +323,14 @@ if __FILE__ == $0
   #            [-n|--lines [+]lines]                                           #
   #            [-h|--help]                                                     #
   #            [-s|--service name]                                             #
-  #            [file]                                                          #
+  #            [-l|--logfile file]                                             #
+  #            [-i|--ignorecase]                                               #
+  #            [patterns]                                                      #
   #----------------------------------------------------------------------------#
   require 'optparse'
   options = {}
   parser = OptionParser.new do |opts|
-    opts.banner = "usage: #{__FILE__} [options] [file]"
+    opts.banner = "usage: #{__FILE__} [options]"
 
     opts.on("-f", "--follow", "follow until killed") do |f|
       options[:follow] = f
@@ -336,6 +340,12 @@ if __FILE__ == $0
     end
     opts.on("-s name", "--service name",  "use logs for named upstart service") do |name|
       options[:service] = name
+    end
+    opts.on("-l file", "--logfile file",  "use logs from file (overrides -s)") do |name|
+      options[:file] = name
+    end
+    opts.on("-i", "--ignorecase", "match patterns case insensitively") do |i|
+      options[:ignorecase] = i
     end
     opts.on_tail("-h", "--help", "Show this message") do
       puts opts
@@ -351,9 +361,9 @@ if __FILE__ == $0
   #----------------------------------------------------------------------------#
   begin
     parser.parse!
-    options[:file] = ARGV.shift || VersaLex::default_log(options[:service])
+    options[:file] ||= VersaLex::default_log(options[:service])
     if ARGV.length>0
-      raise OptionParser::ParseError.new 'only one filename may be specified'
+      raise OptionParser::ParseError.new 'pattern matching not implemented yet'
     elsif !options[:file]
       if options[:service]
         raise OptionParser::ParseError.new "service #{options[:service]} not found"
