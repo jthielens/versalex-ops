@@ -442,8 +442,7 @@ cleoapi() {
             datafile=/tmp/post.$$
             echo $data > /tmp/post.$$
         fi
-        if [ "$verb" = "POST" ]; then verb=""; else verb="--method=$verb"; fi
-        wget --user="$user" --password="$password" --auth-no-challenge $verb --no-check-certificate \
+        wget --user="$user" --password="$password" --auth-no-challenge --method=$verb --no-check-certificate \
             --header="Content-Type: $mediatype" --body-file=$datafile -O - -nv $protocol://$host:$port/api/$resource
         if [ "${data#@}" = "$data" ]; then
             rm $datafile
