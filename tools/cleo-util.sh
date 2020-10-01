@@ -176,7 +176,7 @@ nexusurl () {
     jre=$(jre $release | tr -d .)
     contd="10.10.1.57"
     if [ "$product" = "Unify" ]; then os="ubuntu"; fi
-    echo "http://$contd/nexus/service/local/repo_groups/public/content/com/cleo/installers/$product/$release/$product-$release-$os-jre$jre.$ext"
+    echo "http://$contd/nexus/service/local/artifact/maven/content?r=cleo&g=com.cleo.installers&a=$product&v=$release&e=$ext&c=$os-jre$jre"
 }
 
 # usage:   mysqlurl "version"
