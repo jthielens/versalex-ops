@@ -107,8 +107,8 @@ githubassetdownload () {
 # returns: the current release of $product
 cleorelease () {
     case "$1" in
-    "vltrader") echo 5.7;;
-    "harmony")  echo 5.7;;
+    "vltrader") echo 5.8;;
+    "harmony")  echo 5.8;;
     "unify")    echo 2.3;;
     "vlproxy")  echo 3.8;;
     esac
@@ -172,10 +172,10 @@ nexusurl () {
     local product release os jre contd ext
     product=$(nexusname $1)
     release=$2
-    if [ "$3" = "Windows" ]; then os=windows64; ext=exe; else os=linux64; ext=bin; fi
+    if [ "$3" == "Windows" ]; then os=windows64; ext=exe; else os=linux64; ext=bin; fi
     jre=$(jre $release | tr -d .)
     contd="10.10.1.57"
-    if [ "$product" = "Unify" ]; then os="ubuntu"; fi
+    if [ "$product" == "Unify" ]; then os="ubuntu"; fi
     echo "http://$contd/nexus/service/local/artifact/maven/content?r=cleo&g=com.cleo.installers&a=$product&v=$release&e=$ext&c=$os-jre$jre"
 }
 
