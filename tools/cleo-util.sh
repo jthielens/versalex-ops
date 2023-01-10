@@ -187,6 +187,14 @@ mysqlurl () {
     echo "http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-$version.tar.gz"
 }
 
+# usage:   postgresqlurl "version"
+# returns: the download URL for PostgreSQL driver "version"
+postgresqlurl () {
+    local version
+    version=$1
+    echo "https://jdbc.postgresql.org/download/postgresql-${version}.jar"
+}
+
 # usage:   speak short-message long-message
 # does:    echo a message to stderr depending on "quiet" variable
 speak () {
@@ -279,6 +287,15 @@ mysqldownload () {
     version=$1
     cache=$2
     echo $(download $(mysqlurl $version) "mysql-connector.tar.gz" $cache)
+}
+
+# usage:   postgresqldownload $version [$cache]
+# returns: the downloaded install file name
+postgresqldownload () {
+    local version cache
+    version=$1
+    cache=$2
+    echo $(download $(postgresqlurl $version) "postgresql-${version}.jar" $cache)
 }
 
 # usage:   issuerfiles [issuerdir]
@@ -471,12 +488,14 @@ cleourl)             shift; cleourl "$@";;
 patchurl)            shift; patchurl "$@";;
 nexusurl)            shift; nexusurl "$@";;
 mysqlurl)            shift; mysqlurl "$@";;
+postgresqlurl)       shift; postgresqlurl "$@";;
 speak)               shift; speak "$@";;
 download)            shift; download "$@";;
 cleodownload)        shift; cleodownload "$@";;
 patchdownload)       shift; patchdownload "$@";;
 nexusdownload)       shift; nexusdownload "$@";;
 mysqldownload)       shift; mysqldownload "$@";;
+postgresqldownload)  shift; postgresqldownload "$@";;
 issuerfiles)         shift; issuerfiles "$@";;
 issue)               shift; issue "$@";;
 cleoapi)             shift; cleoapi "$@";;
