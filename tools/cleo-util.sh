@@ -12,7 +12,7 @@ mvnurl () {
             site=releases
         fi
         artifact=$(echo $gav | sed 's/\(.*\)%\(.*\)%\(.*\)/\&g=\1\&a=\2\&v=\3\&e=jar/')
-        echo "http://10.10.1.57/nexus/service/local/artifact/maven/redirect?r=$site$artifact"
+        echo "http://contd.cleo.com/nexus/service/local/artifact/maven/redirect?r=$site$artifact"
     else
         site="http://central.maven.org/maven2"
         artifact=$(echo $gav | sed 's/\(.*\)%\(.*\)%\(.*\)/\2\/\3\/\2-\3.jar/')
@@ -174,7 +174,7 @@ nexusurl () {
     release=$2
     if [ "$3" == "Windows" ]; then os=windows64; ext=exe; else os=linux64; ext=bin; fi
     jre=$(jre $release | tr -d .)
-    contd="10.10.1.57"
+    contd="contd.cleo.com"
     if [ "$product" == "Unify" ]; then os="ubuntu"; fi
     echo "http://$contd/nexus/service/local/artifact/maven/content?r=cleo&g=com.cleo.installers&a=$product&v=$release&e=$ext&c=$os-jre$jre"
 }
